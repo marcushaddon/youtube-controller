@@ -1,5 +1,7 @@
-import Track from './Track';
+import ITrack from './Track';
+import PlayerController from './PlayerController';
 
 export {
-    Track,
+    ITrack,
+    PlayerController,
 };
