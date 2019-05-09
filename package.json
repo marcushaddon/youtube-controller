@@ -2,10 +2,11 @@
   "name": "youtubecontroller",
   "version": "1.0.0",
   "description": "A wrapper for the Youtube IFrame API that provides abstractions for treating videos/subsections of videos as 'tracks' in a 'playlist'",
-  "main": "index.js",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "scripts": {
     "test": "echo TODO",
-    "build": "if [ -d dist ]; then rm -r dist; fi; ./node_modules/.bin/tsc -d src/*  --outDir dist",
+    "build": "if [ -d dist ]; then rm -r dist; fi; ./node_modules/.bin/tsc -d --target es6  --outDir dist",
     "build:demo": "parcel ./demo/index.html --out-dir ./demo/dist"
   },
   "author": "Marcus Haddon",
@@ -18,8 +19,6 @@
     "@types/node": "^12.0.0",
     "@types/youtube": "0.0.37",
     "ts-loader": "^5.4.5",
-    "typescript": "^3.4.5",
-    "webpack": "^4.30.0",
-    "webpack-cli": "^3.3.1"
+    "typescript": "^3.4.5"
   }
 }

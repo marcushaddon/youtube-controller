@@ -1,5 +1,5 @@
 // TODO: Find better solution for this maybe (regeneratorruntime is not defined)?
-import 'babel-polyfill';
+// import 'babel-polyfill';
 import { BehaviorSubject } from 'rxjs';
 import Track from './Track';
 
@@ -20,7 +20,7 @@ export default class PlayerController {
     // Abstractions
     private _activeTrack?: Track;
     private _tracks: Track[];
-    private _activeTrackIndex;
+    private _activeTrackIndex: number;
     private _playbackPosition: number;
     private _state: PlayerState;
 
@@ -38,8 +38,8 @@ export default class PlayerController {
     public constructor() {
         // TODO: Create new player
         this._player = new YT.Player('player', {
-            height: '1000',
-            width: '1000',
+            height: '0',
+            width: '0',
             videoId: '',
             events: {
             //   'onReady': this._onPlayerReady,
@@ -61,6 +61,10 @@ export default class PlayerController {
         this.stateChanged = new BehaviorSubject<PlayerState>(this._state);
     }
 
+    // ==============================================================
+    // YOUTUBE WRAPPER METHODS
+    // ==============================================================
+    // For using in the construction of the iFrame player
     private _onPlayerReady = (event: YT.PlayerEvent) => {
         this._player = event.target;
         this.isInitted = true;
@@ -68,14 +72,10 @@ export default class PlayerController {
         this.initted.next(true);
     }
 
-    // For using in the construction of the iFrame player
     public _onPlayerStateChange(event: YT.OnStateChangeEvent): void {
         this._playerStateChanged.next(event.data);
     }
 
-    /**
-     * Make player operations awaitable
-     */
     private _loadVideo(id: string, start?: number): Promise<YT.PlayerError> {
         return new Promise((res, rej) => {
             // Wait till initted
@@ -107,6 +107,19 @@ export default class PlayerController {
         });
     }
 
+    // ===================================================
+    // OUR LOGIC
+    //====================================================
+    private set state(state: PlayerState) {
+        this._state = state;
+        this.stateChanged.next(this._state);
+    }
+
+    private set activeTrackIndex(index: number) {
+        this._activeTrackIndex = index;
+        this.activeTrackIndexChanged.next(this._activeTrackIndex);
+    }
+
     /**
      * Set a single track as active.
      */
@@ -118,6 +131,7 @@ export default class PlayerController {
         } else {
             await this._seekTo(track.start);
         }
+        this.trackChanged.next(this._activeTrack);
     }
 
     /**
@@ -126,17 +140,53 @@ export default class PlayerController {
     public loadTrackList(tracks: Track[]): void {
         this._tracks = tracks;
         this.queueTrack(tracks[0]);
-        this._activeTrackIndex = 0;
-        this.activeTrackIndexChanged.next(0);
-        this.trackChanged.next(this._activeTrack);
+        this.activeTrackIndex = 0;
+        this.tracksChanged.next(this._tracks);
     }
 
-    // /**
-    //  * Play
-    //  */
-    // public play(): Promise<void> {
-    //     // TODO: Handle no track, end of track etc
-        
-    // }
+    /**
+     * Play
+     */
+    public play(): Promise<boolean> {
+        // TODO: Handle no track, end of track etc
+        return new Promise((res, rej) => {
+            if (!this._activeTrack) {
+                return rej('No track queue\'d');
+            }
+
+            if (this._player.getPlayerState() === YT.PlayerState.PLAYING) {
+                return res();
+            }
+
+            this._player.playVideo();
+            this._playerStateChanged
+            .subscribe(state => {
+                if (state === YT.PlayerState.PLAYING) {
+                    // TODO: Start watching
+                    this.state = PlayerState.Playing;
+                    return res();
+                }
+            })
+        });
+    }
+
+    /**
+     * Pause
+     */
+    public pause(): Promise<void> {
+        return new Promise((res, rej) => {
+            if (this._player.getPlayerState() === YT.PlayerState.PAUSED) {
+                return res();
+            }
+
+            this._player.pauseVideo();
+            this._playerStateChanged
+            .subscribe(state => {
+                if (state === YT.PlayerState.PAUSED) {
+                    res();
+                }
+            })
+        });
+    }
 
 }
