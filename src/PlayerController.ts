@@ -35,18 +35,18 @@ export default class PlayerController {
     public readonly progress: BehaviorSubject<number>;
     public readonly stateChanged: BehaviorSubject<PlayerState>;
 
-    public constructor() {
+    public constructor(elementId: string) {
         // TODO: Create new player
-        this._player = new YT.Player('player', {
+        this._player = new YT.Player(elementId, {
             height: '0',
             width: '0',
             videoId: '',
             events: {
-            //   'onReady': this._onPlayerReady,
                 'onReady': this._onPlayerReady.bind(this),
                 'onStateChange': this._onPlayerStateChange.bind(this)
             }
         });
+        console.log("CONTROLLER", this._player);
         this.initted = new BehaviorSubject(false);
         this._playerStateChanged = new BehaviorSubject<YT.PlayerState>(YT.PlayerState.UNSTARTED);
 
@@ -66,6 +66,7 @@ export default class PlayerController {
     // ==============================================================
     // For using in the construction of the iFrame player
     private _onPlayerReady = (event: YT.PlayerEvent) => {
+        console.log("CONTROLLER bound ready event called");
         this._player = event.target;
         this.isInitted = true;
         console.log("I am initted")
