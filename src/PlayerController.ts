@@ -21,7 +21,6 @@ export default class PlayerController {
     private _activeTrack?: Track;
     private _tracks: Track[];
     private _activeTrackIndex: number;
-    private _playbackPosition: number;
     private _state: PlayerState;
 
 
@@ -46,13 +45,12 @@ export default class PlayerController {
                 'onStateChange': this._onPlayerStateChange.bind(this)
             }
         });
-        console.log("CONTROLLER", this._player);
+
         this.initted = new BehaviorSubject(false);
         this._playerStateChanged = new BehaviorSubject<YT.PlayerState>(YT.PlayerState.UNSTARTED);
 
         this._tracks = [];
         this._activeTrackIndex = -1;
-        this._playbackPosition = -1;
         this._state = PlayerState.Idle;
         this.trackChanged = new BehaviorSubject(this._activeTrack);
         this.activeTrackIndexChanged = new BehaviorSubject(-1);
@@ -94,11 +92,11 @@ export default class PlayerController {
     /**
      * Should not be called while dragging!
      */
-    private _seekTo(time: number): Promise<void> {
+    private _seekTo(targetTime: number): Promise<void> {
         return new Promise((res, rej) => {
-            this._player.seekTo(time, true);
+            this._player.seekTo(targetTime, true);
             this._playerStateChanged
-            .subscribe(state => {
+            .subscribe(async (state) => {
                 // TODO: Determine what state entails 'done'
                 if (state === YT.PlayerState.PLAYING ||
                     state === YT.PlayerState.PAUSED) {
@@ -108,9 +106,16 @@ export default class PlayerController {
         });
     }
 
-    // ===================================================
+    /**
+     * The actual position of the youtube video.
+     */
+    public get absolutePosition() {
+        return this._player.getCurrentTime();
+    }
+
+    // ====================================================
     // OUR LOGIC
-    //====================================================
+    // ====================================================
     private set state(state: PlayerState) {
         this._state = state;
         this.stateChanged.next(this._state);
@@ -132,6 +137,7 @@ export default class PlayerController {
         } else {
             await this._seekTo(track.start);
         }
+        // TODO: Handle youtube bug here!?!!?
         this.trackChanged.next(this._activeTrack);
     }
 
