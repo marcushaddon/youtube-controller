@@ -1,6 +1,6 @@
 // TODO: Find better solution for this maybe (regeneratorruntime is not defined)?
 // import 'babel-polyfill';
-import { BehaviorSubject } from 'rxjs';
+import { BehaviorSubject, Subject } from 'rxjs';
 import Track from './Track';
 
 export enum PlayerState {
@@ -15,7 +15,7 @@ export enum PlayerState {
 export default class PlayerController {
     // Youtube player
     private _player: YT.Player;
-    private _playerStateChanged: BehaviorSubject<YT.PlayerState>;
+    private _playerStateChanged: Subject<YT.PlayerState>;
 
     // Abstractions
     private _activeTrack?: Track;
@@ -47,7 +47,7 @@ export default class PlayerController {
         });
 
         this.initted = new BehaviorSubject(false);
-        this._playerStateChanged = new BehaviorSubject<YT.PlayerState>(YT.PlayerState.UNSTARTED);
+        this._playerStateChanged = new Subject<YT.PlayerState>();
 
         this._tracks = [];
         this._activeTrackIndex = -1;
@@ -67,7 +67,6 @@ export default class PlayerController {
         console.log("CONTROLLER bound ready event called");
         this._player = event.target;
         this.isInitted = true;
-        console.log("I am initted")
         this.initted.next(true);
     }
 
@@ -95,11 +94,18 @@ export default class PlayerController {
     private _seekTo(targetTime: number): Promise<void> {
         return new Promise((res, rej) => {
             this._player.seekTo(targetTime, true);
+            const initialPlayerState = this._player.getPlayerState();
             this._playerStateChanged
-            .subscribe(async (state) => {
+            .subscribe(async (state) => {                
                 // TODO: Determine what state entails 'done'
                 if (state === YT.PlayerState.PLAYING ||
                     state === YT.PlayerState.PAUSED) {
+                    const timeDiff = Math.abs(this._player.getCurrentTime() - targetTime);
+                    const closeEnough = timeDiff < 1;
+                    if (!closeEnough) {
+                        await this._seekTo(targetTime);
+                    }
+
                     res();
                 }
             });
@@ -133,12 +139,11 @@ export default class PlayerController {
         const prevVideoId = this._activeTrack && this._activeTrack.videoId;
         this._activeTrack = track;
         if (this._activeTrack.videoId !== prevVideoId) {
-            await this._loadVideo(track.videoId, track.start);
-        } else {
-            await this._seekTo(track.start);
+
+            await this._loadVideo(track.videoId);
+            
         }
-        // TODO: Handle youtube bug here!?!!?
-        this.trackChanged.next(this._activeTrack);
+        await this._seekTo(track.start);
     }
 
     /**
